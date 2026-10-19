@@ -1,0 +1,17 @@
+import { Link } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import { useAppSelector } from '../app/hooks'
+import { useAppDispatch } from '../app/hooks'
+import { loadBooks } from '../features/books/booksSlice'
+import type { Category, CategoryCount } from '../features/books/types'
+export default function StatsPage() {
+  const dispatch = useAppDispatch()
+  const { items, borrowedIds, status } = useAppSelector((state) => state.books)
+  useEffect(() => { if (status === 'idle') dispatch(loadBooks()) }, [dispatch, status])
+  const counts = useMemo(() => items.reduce<CategoryCount>((result, book) => ({ ...result, [book.category]: result[book.category] + 1 }), { CNTT: 0, 'Kinh tế': 0, 'Ngoại ngữ': 0 }), [items])
+  const totalCopies = items.reduce((sum, book) => sum + book.total, 0)
+  const availableCopies = items.reduce((sum, book) => sum + book.available, 0)
+  if (status === 'loading' || status === 'idle') return <main className="page stats-page"><p role="status" className="page-status">Đang tải số liệu...</p></main>
+  if (status === 'failed') return <main className="page stats-page"><p role="alert" className="page-status">Không thể tải số liệu thư viện.</p><Link className="back-link" to="/">← Về thư viện</Link></main>
+  return <main className="page stats-page"><header><div><p className="eyebrow">BÁO CÁO VẬN HÀNH</p><h1>Tổng quan thư viện</h1><p>Tình trạng kho sách và lượt mượn hiện tại.</p></div><Link className="back-link" to="/">← Về thư viện</Link></header><section className="stats-overview" aria-label="Chỉ số chính"><div className="stat-highlight"><span>ĐẦU SÁCH</span><strong>{items.length}</strong><small>tựa sách trong hệ thống</small></div><div className="stat-highlight"><span>ĐANG ĐƯỢC MƯỢN</span><strong>{borrowedIds.length}</strong><small>trên giới hạn 3 bản</small></div><div className="stat-highlight"><span>BẢN CÓ SẴN</span><strong>{availableCopies}<em> / {totalCopies}</em></strong><small>khả dụng trong kho</small></div></section><section className="stats-card category-report"><div className="section-heading"><div><p className="eyebrow">DANH MỤC</p><h2>Phân bổ đầu sách</h2></div><span className="catalog-note">Theo thể loại</span></div><div className="report-table"><div className="report-row report-header"><span>Thể loại</span><span>Số đầu sách</span><span>Tỷ trọng</span></div>{(Object.keys(counts) as Category[]).map((category) => <div className="report-row" key={category}><span className="category-name"><i className={`category-dot category-${category === 'CNTT' ? 'it' : category === 'Kinh tế' ? 'business' : 'language'}`} />{category}</span><strong>{counts[category]}</strong><span className="share-cell"><span className="bar-track"><i style={{ width: `${items.length ? (counts[category] / items.length) * 100 : 0}%` }} /></span>{items.length ? Math.round((counts[category] / items.length) * 100) : 0}%</span></div>)}</div></section><section className="stats-card availability-report"><div className="section-heading"><div><p className="eyebrow">TỒN KHO</p><h2>Khả năng phục vụ</h2></div><strong className="availability-rate">{totalCopies ? Math.round((availableCopies / totalCopies) * 100) : 0}%</strong></div><div className="wide-bar"><i style={{ width: `${totalCopies ? (availableCopies / totalCopies) * 100 : 0}%` }} /></div><div className="availability-meta"><span><strong>{availableCopies}</strong> bản có sẵn</span><span><strong>{totalCopies - availableCopies}</strong> bản đang được mượn</span></div></section></main>
+}
